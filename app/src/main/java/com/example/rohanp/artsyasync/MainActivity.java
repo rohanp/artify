@@ -5,8 +5,11 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.nio.ByteBuffer;
+import java.util.Random;
+import java.util.logging.Logger;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -26,6 +29,7 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import com.hs.image.ImageUtils;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
@@ -41,6 +45,12 @@ public class MainActivity extends Activity {
     private static final int CAMERA_REQUEST = 1888;
     private static int REQUEST_CAMERA = 0;
     private boolean CAMERA = false;
+    private Uri mImageUri;
+
+    private String photoFilePath;
+
+    static final String AB = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    static Random rnd = new Random();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,7 +61,35 @@ public class MainActivity extends Activity {
         prgDialog.setCancelable(false);
     }
 
-    public void openCamera(View view){
+    public boolean openCamera(View view){
+
+        try {
+            Intent intent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+            File f = ImageUtils.createImageFile(ImageUtils.getPackageName(this));
+            photoFilePath =  f.toString();
+
+            if ((f != null) && f.exists()) {
+                mImageUri = Uri.fromFile(f);
+                intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(f));
+                startActivityForResult(intent, CAMERA_REQUEST);
+                CAMERA = true;
+            }
+        } catch (Exception e) {
+            Log.e("ey", Log.getStackTraceString(e));
+        }
+
+        /*
+        Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+        //new open camera - doesnt work
+        mImageUri = Uri.fromFile(photo);
+        cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, mImageUri);
+        //start camera intent
+        Intent.createChooser(cameraIntent, "Take Picture");
+        startActivityForResult(cameraIntent, REQUEST_CAMERA);
+        CAMERA = true;
+        */
+
+        /* old open camera - only gives thumbnails
         try {
             Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
             //Uri uri = Uri.fromFile(File.createTempFile("image", ".jpg"));
@@ -63,8 +101,9 @@ public class MainActivity extends Activity {
         } catch(Exception e) {
             Log.e("", Log.getStackTraceString(e));
         }
+        */
+        return true;
     }
-
 
     public void chooseFilter(View view) {
         setContentView(R.layout.activity_filter);
@@ -78,42 +117,22 @@ public class MainActivity extends Activity {
         startActivityForResult(galleryIntent, RESULT_LOAD_IMG);
     }
 
-    // When Image is selected from Gallery
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         ImageView imgView = (ImageView) findViewById(R.id.imgView);
 
+        Log.d("camera: ", Boolean.toString(CAMERA));
+
         try {
 
-            if(CAMERA && resultCode == RESULT_OK){
-
-                
-                fileName = "temp.png";
-                File sd = Environment.getExternalStorageDirectory();
-                File dest = new File(sd, fileName);
-
-                Log.d("hi", Environment.getExternalStorageDirectory().toString());
-                Bitmap photo = (Bitmap) data.getExtras().get("data");
-
-                try {
-                    FileOutputStream out = new FileOutputStream(dest);
-                    Log.d("isthisathing", out.toString());
-                    photo.compress(Bitmap.CompressFormat.PNG, 100, out);
-                    out.flush();
-                    out.close();
-                    params.put("filename", fileName);
-
-                    imgPath = "/storage/emulated/0/" + fileName;
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-
-                imgView.setImageBitmap(photo);
-
+            if(CAMERA){
+                Log.d("here", "yup");
+                String fileNameSegments[] = photoFilePath.split("/");
+                fileName = fileNameSegments[fileNameSegments.length - 1];
+                params.put("filename", fileName + ".jpg");
+                Log.d("stillhere", "yup");
             }
-
-            // When an Image is picked
             else if (requestCode == RESULT_LOAD_IMG && resultCode == RESULT_OK
                     && null != data) {
                 // Get the Image from data
@@ -137,7 +156,7 @@ public class MainActivity extends Activity {
                 // Get the Image's file name
                 String fileNameSegments[] = imgPath.split("/");
                 fileName = fileNameSegments[fileNameSegments.length - 1];
-                // Put file name in Async Http Post Param which will used in Php web app
+                // Put file name in Async Http Post Param which will used in php web app
                 params.put("filename", fileName);
 
             } else {
@@ -145,6 +164,7 @@ public class MainActivity extends Activity {
                         Toast.LENGTH_LONG).show();
             }
         } catch (Exception e) {
+            e.printStackTrace();
             Toast.makeText(this, "Something went wrong", Toast.LENGTH_LONG)
                     .show();
         }
@@ -153,7 +173,7 @@ public class MainActivity extends Activity {
     // When Upload button is clicked
     public void uploadImage(View v) {
         // When Image is selected from Gallery
-        if (imgPath != null && !imgPath.isEmpty()) {
+        if (imgPath != null && !imgPath.isEmpty() || photoFilePath != null) {
             prgDialog.setMessage("Converting Image to Binary Data");
             prgDialog.show();
             // Convert image to String using Base64
@@ -179,8 +199,13 @@ public class MainActivity extends Activity {
                 BitmapFactory.Options options = null;
                 options = new BitmapFactory.Options();
                 options.inSampleSize = 3;
-                bitmap = BitmapFactory.decodeFile(imgPath,
-                        options);
+
+                if(CAMERA)
+                    bitmap = BitmapFactory.decodeFile(photoFilePath,
+                            options);
+                else
+                    bitmap = BitmapFactory.decodeFile(imgPath,
+                            options);
 
                 ByteArrayOutputStream stream = new ByteArrayOutputStream();
                 // Must compress the Image to reduce image size to make upload easy
@@ -280,8 +305,7 @@ public class MainActivity extends Activity {
         }
 
         Bitmap bmp = BitmapFactory.decodeStream(url.openConnection().getInputStream());
-        ImageView imgView = (ImageView) findViewById(R.id.imgView);
-        imgView.setImageBitmap(bmp);
+
     }
 
     @Override
@@ -292,5 +316,12 @@ public class MainActivity extends Activity {
         if (prgDialog != null) {
             prgDialog.dismiss();
         }
+    }
+
+    String randomString( int len ){
+        StringBuilder sb = new StringBuilder( len );
+        for( int i = 0; i < len; i++ )
+            sb.append( AB.charAt( rnd.nextInt(AB.length()) ) );
+        return sb.toString();
     }
 }
