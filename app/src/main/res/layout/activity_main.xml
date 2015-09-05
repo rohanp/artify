@@ -19,21 +19,30 @@
             android:id="@+id/buttonLoadPicture"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="left"
             android:layout_weight="0"
             android:onClick="loadImagefromGallery"
-            android:text="Load Picture" >
+            android:text="Load Picture"
+            android:layout_marginLeft="20dp">
         </Button>
 
-        <Button
-            android:id="@+id/buttonTakePicture"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="right"
-            android:layout_weight="0"
-            android:onClick="takePicture"
-            android:text="Take Picture" >
-        </Button>
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_weight="0">
+
+            <Button
+                android:id="@+id/buttonTakePicture"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="0"
+                android:onClick="openCamera"
+                android:text="Take Picture"
+                android:layout_alignParentTop="true"
+                android:layout_alignParentRight="true"
+                android:layout_alignParentEnd="true"
+                android:layout_marginRight="20dp">
+            </Button>
+        </RelativeLayout>
     </LinearLayout>
 
     <Button

@@ -41,9 +41,12 @@
         />
 
     <Button
+        android:id="@+id/submit"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:text="Artify!"
+        android:layout_alignParentBottom="true"
+        android:onClick="uploadImage"
         />
 
 
