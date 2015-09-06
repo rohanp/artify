@@ -1,9 +1,12 @@
 package com.example.rohanp.artsyasync;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -14,6 +17,7 @@ import java.util.logging.Logger;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -22,9 +26,13 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
@@ -78,36 +86,27 @@ public class MainActivity extends Activity {
             Log.e("ey", Log.getStackTraceString(e));
         }
 
-        /*
-        Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
-        //new open camera - doesnt work
-        mImageUri = Uri.fromFile(photo);
-        cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, mImageUri);
-        //start camera intent
-        Intent.createChooser(cameraIntent, "Take Picture");
-        startActivityForResult(cameraIntent, REQUEST_CAMERA);
-        CAMERA = true;
-        */
-
-        /* old open camera - only gives thumbnails
-        try {
-            Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
-            //Uri uri = Uri.fromFile(File.createTempFile("image", ".jpg"));
-            //cameraIntent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, uri);
-            startActivityForResult(cameraIntent, REQUEST_CAMERA);
-            //Intent chooser = Intent.createChooser(cameraIntent, "Take Picture");
-            CAMERA = true;
-
-        } catch(Exception e) {
-            Log.e("", Log.getStackTraceString(e));
-        }
-        */
         return true;
     }
 
     public void chooseFilter(View view) {
         setContentView(R.layout.activity_filter);
     }
+
+    @Override
+    public void onBackPressed() {
+        moveTaskToBack(true);
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            moveTaskToBack(true);
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
 
     public void loadImagefromGallery(View view) {
         // Create intent to Open Image applications like Gallery, Google Photos
@@ -128,9 +127,14 @@ public class MainActivity extends Activity {
 
             if(CAMERA){
                 Log.d("here", "yup");
+
+                Bitmap photo = BitmapFactory.decodeFile(photoFilePath);
+                photo = Bitmap.createScaledBitmap(photo,(int)(photo.getWidth()*0.6), (int)(photo.getHeight()*0.6), true);
+                imgView.setImageBitmap(photo);
+
                 String fileNameSegments[] = photoFilePath.split("/");
                 fileName = fileNameSegments[fileNameSegments.length - 1];
-                params.put("filename", fileName + ".jpg");
+                params.put("filename", fileName);
                 Log.d("stillhere", "yup");
             }
             else if (requestCode == RESULT_LOAD_IMG && resultCode == RESULT_OK
@@ -200,6 +204,8 @@ public class MainActivity extends Activity {
                 options = new BitmapFactory.Options();
                 options.inSampleSize = 3;
 
+                Log.d("hi", photoFilePath);
+
                 if(CAMERA)
                     bitmap = BitmapFactory.decodeFile(photoFilePath,
                             options);
@@ -209,7 +215,8 @@ public class MainActivity extends Activity {
 
                 ByteArrayOutputStream stream = new ByteArrayOutputStream();
                 // Must compress the Image to reduce image size to make upload easy
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream);
+                bitmap = Bitmap.createScaledBitmap(bitmap,(int)(bitmap.getWidth()*0.6), (int)(bitmap.getHeight()*0.6), true);
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
                 byte[] byte_arr = stream.toByteArray();
 
                /* int bytes = bitmap.getByteCount();
@@ -242,7 +249,7 @@ public class MainActivity extends Activity {
         prgDialog.setMessage("Invoking Php");
         AsyncHttpClient client = new AsyncHttpClient();
         // Don't forget to change the IP address to your LAN address. Port no as well.
-        client.post("http://52.88.75.165/upload_image.php",
+        client.post("http://rpandit2-80.terminal.com/upload_image.php",
                 params, new AsyncHttpResponseHandler() {
                     // When the response returned by REST has Http
                     // response code '200'
@@ -257,11 +264,11 @@ public class MainActivity extends Activity {
 
                         Log.e("link", response);
 
-                        /*try {
+                        try {
                             displayImage(response);
                         } catch (IOException e) {
                             e.printStackTrace();
-                        }*/
+                        }
                     }
 
                     // When the response returned by REST has Http
@@ -297,16 +304,77 @@ public class MainActivity extends Activity {
     }
 
     public void displayImage(String response) throws IOException {
-        URL url = null;
-        try {
-            url = new URL(response);
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        }
+        final String url = response;
+        setContentView(R.layout.activity_output);
 
-        Bitmap bmp = BitmapFactory.decodeStream(url.openConnection().getInputStream());
+        final Handler mHandler = new Handler(Looper.getMainLooper()) {
+            @Override
+            public void handleMessage(Message message) {
+                Toast.makeText(getApplicationContext(), (String) message.obj, Toast.LENGTH_LONG).show();
+            }
+        };
+
+        new Thread(new Runnable() {
+            ImageView outputView = (ImageView) findViewById(R.id.output);
+            public void run() {
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+
+                for(int i=50; i<1000; i+=50) {
+                    try {
+                        Thread.sleep(12000 + 50*i);                 //1000 milliseconds is one second.
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                    }
+                    new DownloadImageTask(outputView).execute(url.substring(0, url.lastIndexOf('.')) + "_" + i + ".png");
+                    Message message = mHandler.obtainMessage(1, i + "th iteration");
+                    message.sendToTarget();
+
+                }
+                new DownloadImageTask(outputView).execute(url);
+                Message message = mHandler.obtainMessage(1, "Final image!");
+                message.sendToTarget();
+            }
+        }).start();
 
     }
+
+    private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
+        ImageView bmImage;
+
+        public DownloadImageTask(ImageView bmImage) {
+            this.bmImage = bmImage;
+        }
+
+        protected Bitmap doInBackground(String... urls) {
+            String urldisplay = urls[0];
+            Bitmap mIcon11 = null;
+            try {
+                InputStream in = new java.net.URL(urldisplay).openStream();
+                mIcon11 = BitmapFactory.decodeStream(in);
+            } catch (Exception e) {
+                Log.e("Error", e.getMessage());
+                e.printStackTrace();
+            }
+            return mIcon11;
+        }
+
+        protected void onPostExecute(Bitmap result) {
+            bmImage.setImageBitmap(result);
+        }
+    }
+
+    /*public Uri getImageUri(Context inContext, Bitmap inImage) {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        inImage.compress(Bitmap.CompressFormat.PNG, 100, bytes);
+        String path = MediaStore.Images.Media.insertImage(inContext.getContentResolver(), inImage, "Title", null);
+        return Uri.parse(path);
+    }*/
+
+
 
     @Override
     protected void onDestroy() {
@@ -318,10 +386,4 @@ public class MainActivity extends Activity {
         }
     }
 
-    String randomString( int len ){
-        StringBuilder sb = new StringBuilder( len );
-        for( int i = 0; i < len; i++ )
-            sb.append( AB.charAt( rnd.nextInt(AB.length()) ) );
-        return sb.toString();
-    }
 }
