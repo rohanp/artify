@@ -1,53 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingLeft="16dp"
-    android:paddingRight="16dp" >
+    tools:context="{relativePackage}.${activityClass}"
+    android:orientation="vertical" >
+
+    <Gallery
+        android:id="@+id/gallery1"
+        android:layout_width="fill_parent"
+        android:layout_height="150dp" />
 
     <ImageView
-        android:id="@+id/monaLisa"
-        android:layout_width="200dp"
-        android:layout_height="200dp"
-        android:padding="10dp"
-        android:layout_marginLeft="-5dp"
-        android:src="@drawable/matisse"
-        />
-
-    <ImageView
-        android:id="@+id/picasso"
-        android:layout_marginTop="10dp"
-        android:layout_width="175dp"
-        android:layout_height="175dp"
-        android:layout_toRightOf="@id/monaLisa"
-        android:src="@drawable/seatednude"
-        />
-
-    <ImageView
-        android:id="@+id/starryNight"
-        android:layout_width="250dp"
-        android:layout_height="250dp"
-        android:layout_below="@id/monaLisa"
-        android:layout_centerHorizontal="true"
-        android:src="@drawable/starrynight"
-        />
-
-    <ImageView
-        android:id="@+id/scream"
-        android:layout_width="200dp"
-        android:layout_height="200dp"
-        android:layout_toRightOf="@id/starryNight"
-        android:src="@drawable/screamimg"
-        />
+        android:id="@+id/image1"
+        android:layout_width="235dp"
+        android:layout_height="345dp"
+        android:layout_gravity="center_horizontal"
+        android:background="#cfcfcf"
+        android:paddingTop="5dp"
+        android:paddingBottom="5dp"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
+        android:src="@drawable/monalisa" />
 
     <Button
         android:id="@+id/submit"
-        android:layout_width="fill_parent"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Artify!"
-        android:layout_alignParentBottom="true"
-        android:onClick="uploadImage"
-        />
-
-
-</RelativeLayout>
+        android:onClick="uploadImage"/>
+</LinearLayout>

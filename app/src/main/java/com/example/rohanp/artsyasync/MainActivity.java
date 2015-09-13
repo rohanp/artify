@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -19,9 +20,12 @@ import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.TypedArray;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -34,8 +38,12 @@ import android.util.Base64;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.BaseAdapter;
+import android.widget.Gallery;
 import android.widget.ImageView;
 import android.widget.Toast;
+import android.view.ViewGroup;
 
 import com.hs.image.ImageUtils;
 import com.loopj.android.http.AsyncHttpClient;
@@ -46,6 +54,7 @@ import com.loopj.android.http.RequestParams;
 public class MainActivity extends Activity {
     ProgressDialog prgDialog;
     String encodedString;
+    String artString;
     RequestParams params = new RequestParams();
     String imgPath, fileName;
     Bitmap bitmap;
@@ -89,8 +98,61 @@ public class MainActivity extends Activity {
         return true;
     }
 
+    Integer[] imageIDs = {
+            R.drawable.monalisa,
+            R.drawable.starrynight,
+            R.drawable.matisse,
+            R.drawable.scream,
+            R.drawable.seatednude,
+            R.drawable.matisse2,
+            R.drawable.memory
+    };
+
     public void chooseFilter(View view) {
         setContentView(R.layout.activity_filter);
+        Gallery gallery = (Gallery) findViewById(R.id.gallery1);
+        gallery.setAdapter(new ImageAdapter(this));
+        gallery.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
+                // display the images selected
+                ImageView imageView = (ImageView) findViewById(R.id.image1);
+                imageView.setImageResource(imageIDs[position]);
+            }
+        });
+    }
+
+    public class ImageAdapter extends BaseAdapter {
+        private Context context;
+        private int itemBackground;
+        public ImageAdapter(Context c)
+        {
+            context = c;
+            // sets a grey background; wraps around the images
+            TypedArray a =obtainStyledAttributes(R.styleable.MyGallery);
+            itemBackground = a.getResourceId(R.styleable.MyGallery_android_galleryItemBackground, 0);
+            a.recycle();
+        }
+        // returns the number of images
+        public int getCount() {
+            return imageIDs.length;
+        }
+        // returns the ID of an item
+        public Object getItem(int position) {
+            return position;
+        }
+
+        // returns the ID of an item
+        public long getItemId(int position) {
+            return position;
+        }
+        // returns an ImageView view
+        public View getView(int position, View convertView, ViewGroup parent) {
+            ImageView imageView = new ImageView(context);
+            imageView.setImageResource(imageIDs[position]);
+            imageView.setLayoutParams(new Gallery.LayoutParams(300, 300));
+            imageView.setBackgroundResource(itemBackground);
+            return imageView;
+        }
     }
 
     @Override
@@ -215,17 +277,19 @@ public class MainActivity extends Activity {
 
                 ByteArrayOutputStream stream = new ByteArrayOutputStream();
                 // Must compress the Image to reduce image size to make upload easy
-                bitmap = Bitmap.createScaledBitmap(bitmap,(int)(bitmap.getWidth()*0.6), (int)(bitmap.getHeight()*0.6), true);
+                bitmap = Bitmap.createScaledBitmap(bitmap,(int)(bitmap.getWidth()*0.2), (int)(bitmap.getHeight()*0.2), true);
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
                 byte[] byte_arr = stream.toByteArray();
-
-               /* int bytes = bitmap.getByteCount();
-                ByteBuffer buffer = ByteBuffer.allocate(bytes);
-                bitmap.copyPixelsToBuffer(buffer);
-                byte[] byte_arr = buffer.array();*/
-
-                // Encode Image to String
                 encodedString = Base64.encodeToString(byte_arr, 0);
+
+                Drawable d = ((ImageView) findViewById(R.id.image1)).getDrawable();
+                Bitmap bitmap = ((BitmapDrawable)d).getBitmap();
+                bitmap = Bitmap.createScaledBitmap(bitmap,(int)(bitmap.getWidth()*0.3), (int)(bitmap.getHeight()*0.3), true);
+                stream = new ByteArrayOutputStream();
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, stream);
+                byte[] byte_arr_2 = stream.toByteArray();
+                artString = Base64.encodeToString(byte_arr_2, 0);
+
                 return "";
             }
 
@@ -234,6 +298,7 @@ public class MainActivity extends Activity {
                 prgDialog.setMessage("Calling Upload");
                 // Put converted Image string into Async Http Post param
                 params.put("image", encodedString);
+                params.put("art", artString);
                 // Trigger Image upload
                 triggerImageUpload();
             }
@@ -244,9 +309,9 @@ public class MainActivity extends Activity {
         makeHTTPCall();
     }
 
-    // Make Http call to upload Image to Php server
+    // Make Http call to upload Image to PHP server
     public void makeHTTPCall() {
-        prgDialog.setMessage("Invoking Php");
+        prgDialog.setMessage("Invoking PHP");
         AsyncHttpClient client = new AsyncHttpClient();
         // Don't forget to change the IP address to your LAN address. Port no as well.
         client.post("http://rpandit2-80.terminal.com/upload_image.php",
@@ -257,10 +322,6 @@ public class MainActivity extends Activity {
                     public void onSuccess(String response) {
                         // Hide Progress Dialog
                         prgDialog.hide();
-
-
-                        Toast.makeText(getApplicationContext(), response,
-                                Toast.LENGTH_LONG).show();
 
                         Log.e("link", response);
 
@@ -303,9 +364,11 @@ public class MainActivity extends Activity {
                 });
     }
 
-    public void displayImage(String response) throws IOException {
+    public void displayImage(String response) throws IOException, MalformedURLException {
         final String url = response;
         setContentView(R.layout.activity_output);
+        ImageView outputView = (ImageView) findViewById(R.id.output);
+        outputView.setImageBitmap(BitmapFactory.decodeFile(photoFilePath));
 
         final Handler mHandler = new Handler(Looper.getMainLooper()) {
             @Override
@@ -316,6 +379,7 @@ public class MainActivity extends Activity {
 
         new Thread(new Runnable() {
             ImageView outputView = (ImageView) findViewById(R.id.output);
+
             public void run() {
                 try {
                     Thread.sleep(5000);
@@ -325,10 +389,27 @@ public class MainActivity extends Activity {
 
                 for(int i=50; i<1000; i+=50) {
                     try {
-                        Thread.sleep(12000 + 50*i);                 //1000 milliseconds is one second.
+                        Thread.sleep(10000);                 //1000 milliseconds is one second.
                     } catch (InterruptedException ex) {
                         Thread.currentThread().interrupt();
                     }
+                    try {
+                        while(getResponseCode(url.substring(0, url.lastIndexOf('.')) + "_" + i + ".png") == 404){
+                            try {
+                                Thread.sleep(2000);
+                            } catch (InterruptedException ex) {
+                                Thread.currentThread().interrupt();
+                            }
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    try {
+                        Thread.sleep(15000);
+                    } catch (InterruptedException ex) {
+                        Thread.currentThread().interrupt();
+                    }
+
                     new DownloadImageTask(outputView).execute(url.substring(0, url.lastIndexOf('.')) + "_" + i + ".png");
                     Message message = mHandler.obtainMessage(1, i + "th iteration");
                     message.sendToTarget();
@@ -340,6 +421,14 @@ public class MainActivity extends Activity {
             }
         }).start();
 
+    }
+
+    public static int getResponseCode(String urlString) throws MalformedURLException, IOException {
+        URL u = new URL(urlString);
+        HttpURLConnection huc =  (HttpURLConnection)  u.openConnection();
+        huc.setRequestMethod("GET");
+        huc.connect();
+        return huc.getResponseCode();
     }
 
     private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
@@ -366,15 +455,6 @@ public class MainActivity extends Activity {
             bmImage.setImageBitmap(result);
         }
     }
-
-    /*public Uri getImageUri(Context inContext, Bitmap inImage) {
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        inImage.compress(Bitmap.CompressFormat.PNG, 100, bytes);
-        String path = MediaStore.Images.Media.insertImage(inContext.getContentResolver(), inImage, "Title", null);
-        return Uri.parse(path);
-    }*/
-
-
 
     @Override
     protected void onDestroy() {
